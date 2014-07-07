@@ -95,11 +95,14 @@ func (c *Client) checkRedirect(req *http.Request, via []*http.Request) error {
 	return fmt.Errorf("hit redirect for %v", req.URL) // shouldn't happen
 }
 
-func (c *Client) get(url string) (body []byte, err error) {
+func (c *Client) get(u string) (body []byte, err error) {
 	var resp *http.Response
 	for try := 1; try <= 2; try++ {
-		resp, err = c.hc.Get(url)
-		if err != nil && strings.Contains(err.Error(), errRedirect.Error()) { // XXX: ugh, why is the value not being passed back?!?
+		resp, err = c.hc.Get(u)
+		if ue, ok := err.(*url.Error); ok {
+			err = ue.Err
+		}
+		if err == errRedirect {
 			if err = c.login(); err == nil {
 				continue // next try
 			}
