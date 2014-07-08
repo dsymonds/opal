@@ -1,7 +1,6 @@
 package opal
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,58 +23,56 @@ var cookieBaseURL = &url.URL{
 type Client struct {
 	hc *http.Client
 
-	username, password string
+	cfg *config
+}
+
+type config struct {
+	Username, Password string
+	Cookies            []*http.Cookie
 }
 
 func NewClient() (*Client, error) {
+	// Security check.
+	fi, err := os.Stat(configFile)
+	if err != nil {
+		return nil, err
+	}
+	if fi.Mode()&0077 != 0 {
+		return nil, fmt.Errorf("security check failed on %s: mode is %04o; it should not be accessible by group/other", configFile, fi.Mode())
+	}
+
+	raw, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		return nil, err
+	}
+	cfg := new(config)
+	if err := json.Unmarshal(raw, cfg); err != nil {
+		return nil, fmt.Errorf("bad config file %s: %v", configFile, err)
+	}
+
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, err
 	}
-
-	cfg, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		return nil, err
-	}
-	lines := bytes.Split(cfg, []byte("\n"))
-	if len(lines) < 2 {
-		return nil, fmt.Errorf("%s is too short; should have at least two lines", configFile)
-	}
-	var cookies []*http.Cookie
-	for i, line := range lines[2:] {
-		if len(line) == 0 {
-			continue
-		}
-		cookie := new(http.Cookie)
-		if err := json.Unmarshal(line, cookie); err != nil {
-			return nil, fmt.Errorf("bad cookie at %s:%d: %v", configFile, i+3, err)
-		}
-		cookies = append(cookies, cookie)
-	}
-	jar.SetCookies(cookieBaseURL, cookies)
+	jar.SetCookies(cookieBaseURL, cfg.Cookies)
 
 	c := &Client{
 		hc: &http.Client{
 			Jar: jar,
 		},
-		username: string(lines[0]),
-		password: string(lines[1]),
+		cfg: cfg,
 	}
 	c.hc.CheckRedirect = c.checkRedirect
 	return c, nil
 }
 
 func (c *Client) WriteConfig() error {
-	lines := []string{c.username, c.password}
-	cookies := c.hc.Jar.Cookies(cookieBaseURL)
-	for _, cookie := range cookies {
-		line, err := json.Marshal(cookie)
-		if err != nil {
-			return err
-		}
-		lines = append(lines, string(line))
+	c.cfg.Cookies = c.hc.Jar.Cookies(cookieBaseURL)
+	raw, err := json.Marshal(c.cfg)
+	if err != nil {
+		return err
 	}
-	return ioutil.WriteFile(configFile, []byte(strings.Join(lines, "\n")+"\n"), 0600)
+	return ioutil.WriteFile(configFile, raw, 0600)
 }
 
 func (c *Client) Overview() (*Overview, error) {
@@ -132,8 +129,8 @@ func (c *Client) login() error {
 		return err
 	}
 	form := url.Values{
-		"h_username": []string{c.username},
-		"h_password": []string{c.password},
+		"h_username": []string{c.cfg.Username},
+		"h_password": []string{c.cfg.Password},
 		"CSRFToken":  []string{token},
 	}
 	resp, err := c.hc.PostForm("https://www.opal.com.au/login/registeredUserUsernameAndPasswordLogin", form)
