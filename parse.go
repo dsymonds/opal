@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
+	"time"
 
 	"code.google.com/p/go.net/html"
 	"code.google.com/p/go.net/html/atom"
@@ -22,26 +24,39 @@ type Card struct {
 
 var (
 	cardNumberRE = regexp.MustCompile(`^\d+$`)
-	balanceRE    = regexp.MustCompile(`^\$(\d+)\.(\d\d)$`)
+	amountRE     = regexp.MustCompile(`^(-?)\$(\d+)\.(\d\d)$`)
 )
+
+// parseAmount parses something matching amountRE and returns the number of cents.
+func parseAmount(amt string) (int, error) {
+	m := amountRE.FindStringSubmatch(amt)
+	if m == nil {
+		return 0, fmt.Errorf("does not match /%v/", amountRE)
+	}
+	dollars, err := strconv.ParseInt(m[2], 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	cents, _ := strconv.ParseInt(m[3], 10, 8) // can't fail; it's exactly two digits
+	x := int(dollars)*100 + int(cents)
+	if m[1] == "-" {
+		x = -x
+	}
+	return x, nil
+}
 
 // parseCard parses card info from the num and bal TDs.
 func parseCard(num, bal string) (Card, error) {
 	if !cardNumberRE.MatchString(num) {
 		return Card{}, fmt.Errorf("card number %q does not match /%v/", num, cardNumberRE)
 	}
-	m := balanceRE.FindStringSubmatch(bal)
-	if m == nil {
-		return Card{}, fmt.Errorf("balance %q does not match /%v/", bal, balanceRE)
-	}
-	dollars, err := strconv.ParseInt(m[1], 10, 32)
+	balance, err := parseAmount(bal)
 	if err != nil {
 		return Card{}, fmt.Errorf("bad balance %q: %v", bal, err)
 	}
-	cents, _ := strconv.ParseInt(m[2], 10, 8) // can't fail; it's exactly two digits
 	return Card{
 		Number:  num,
-		Balance: int(dollars)*100 + int(cents),
+		Balance: balance,
 	}, nil
 }
 
@@ -89,6 +104,139 @@ func parseOverview(input []byte) (*Overview, error) {
 	return o, nil
 }
 
+type Activity struct {
+	CardNumber   string
+	Transactions []*Transaction
+}
+
+type Transaction struct {
+	Number        int
+	When          time.Time
+	Mode          string // "train", etc., if known
+	Details       string
+	JourneyNumber int // if known
+
+	FareApplied            string
+	Fare, Discount, Amount int // in cents
+}
+
+func (t *Transaction) String() string { return fmt.Sprintf("%+v", *t) }
+
+func parseActivity(input []byte) (*Activity, error) {
+	// TODO: check input is UTF-8
+	doc, err := html.Parse(bytes.NewReader(input))
+	if err != nil {
+		return nil, err
+	}
+
+	table := findByAttr(doc, "id", "transaction-data")
+	if table == nil || table.DataAtom != atom.Table {
+		return nil, errors.New("did not find transaction table")
+	}
+
+	a := new(Activity)
+
+	// The <caption> of the table will look like
+	//	<caption><span>My Opal activity: 314159</span></caption>
+	caption := findByDataAtom(table, atom.Caption)
+	if caption == nil || caption.FirstChild == nil {
+		return nil, errors.New("did not find caption")
+	}
+	a.CardNumber = text(caption.FirstChild)
+	if i := strings.LastIndex(a.CardNumber, " "); i >= 0 {
+		a.CardNumber = a.CardNumber[i+1:]
+	}
+
+	tbody := findByDataAtom(table, atom.Tbody)
+	if tbody == nil {
+		return nil, errors.New("did not find tbody")
+	}
+
+	eachByAtom(tbody, atom.Tr, func(n *html.Node) bool {
+		if err != nil {
+			return false
+		}
+		var t *Transaction
+		t, err = parseTransaction(n)
+		a.Transactions = append(a.Transactions, t)
+		return false
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return a, nil
+}
+
+func parseTransaction(n *html.Node) (*Transaction, error) {
+	// Collate all the <TD> contents.
+	var tds []string
+	for kid := n.FirstChild; kid != nil; kid = kid.NextSibling {
+		if kid.FirstChild != nil && kid.FirstChild.DataAtom == atom.Img {
+			// <td><img alt="train" ...></td>
+			tds = append(tds, attrVal(kid.FirstChild, "alt"))
+			continue
+		}
+		tds = append(tds, text(kid))
+	}
+	if len(tds) != 9 {
+		return nil, fmt.Errorf("transaction row with %d TDs, want 9", len(tds))
+	}
+
+	// Parse the transaction.
+	t := new(Transaction)
+	var err error
+
+	t.Number, err = parseDecimal(tds[0])
+	if err != nil {
+		return nil, fmt.Errorf("bad transaction number %q: %v", tds[0], err)
+	}
+	t.When, err = time.ParseInLocation("Mon 02/01/2006 15:04", tds[1], sydneyZone)
+	if err != nil {
+		return nil, fmt.Errorf("bad time %q: %v", tds[1], err)
+	}
+	t.Mode, t.Details = tds[2], strings.TrimSpace(tds[3])
+	t.FareApplied = strings.TrimSpace(tds[5])
+
+	// The rest are all optional.
+	fields := []struct {
+		index  int
+		dst    *int
+		parser func(string) (int, error)
+		name   string
+	}{
+		{4, &t.JourneyNumber, parseDecimal, "journey number"},
+		{6, &t.Fare, parseAmount, "fare"},
+		{7, &t.Discount, parseAmount, "discount"},
+		{8, &t.Amount, parseAmount, "amount"},
+	}
+	for _, f := range fields {
+		if s := tds[f.index]; s != "" {
+			*f.dst, err = f.parser(s)
+			if err != nil {
+				return nil, fmt.Errorf("bad %s %q: %v", f.name, s, err)
+			}
+		}
+	}
+
+	return t, nil
+}
+
+var sydneyZone *time.Location // every time is in Australia/Sydney
+
+func init() {
+	var err error
+	sydneyZone, err = time.LoadLocation("Australia/Sydney")
+	if err != nil {
+		panic(err)
+	}
+}
+
+func parseDecimal(s string) (int, error) {
+	x, err := strconv.ParseInt(s, 10, 0)
+	return int(x), err
+}
+
 func parseLogin(input []byte) (token string, err error) {
 	// TODO: check input is UTF-8
 	doc, err := html.Parse(bytes.NewReader(input))
@@ -108,11 +256,23 @@ func parseLogin(input []byte) (token string, err error) {
 }
 
 func text(n *html.Node) string {
-	n = find(n, func(n *html.Node) bool { return n.Type == html.TextNode })
-	if n == nil {
-		return ""
+	var bits []string
+	each(n, func(n *html.Node) bool {
+		if n.Type == html.TextNode {
+			bits = append(bits, n.Data)
+		}
+		return true
+	})
+	return strings.Join(bits, " ")
+}
+
+func attrVal(n *html.Node, key string) string {
+	for _, attr := range n.Attr {
+		if attr.Key == key {
+			return attr.Val
+		}
 	}
-	return n.Data
+	return ""
 }
 
 func findByAttr(n *html.Node, key, val string) *html.Node {
@@ -135,7 +295,7 @@ func findByDataAtom(n *html.Node, a atom.Atom) *html.Node {
 func eachByAtom(n *html.Node, a atom.Atom, f func(*html.Node) bool) {
 	each(n, func(n *html.Node) bool {
 		if n.DataAtom == a {
-			f(n)
+			return f(n)
 		}
 		return true
 	})
