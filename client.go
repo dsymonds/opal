@@ -83,6 +83,15 @@ func (c *Client) Overview() (*Overview, error) {
 	return parseOverview(body)
 }
 
+func (c *Client) Activity(cardIndex int) (*Activity, error) {
+	u := fmt.Sprintf("https://www.opal.com.au/registered/opal-card-transactions/?cardIndex=%d", cardIndex)
+	body, err := c.get(u)
+	if err != nil {
+		return nil, err
+	}
+	return parseActivity(body)
+}
+
 var errRedirect = errors.New("internal error: login redirect detected")
 
 func (c *Client) checkRedirect(req *http.Request, via []*http.Request) error {
