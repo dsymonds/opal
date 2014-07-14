@@ -114,10 +114,10 @@ type Transaction struct {
 	When          time.Time
 	Mode          string // "train", etc., if known
 	Details       string
-	JourneyNumber int // if known
+	JourneyNumber int // if known; numbered within the week
 
-	FareApplied            string
-	Fare, Discount, Amount int // in cents
+	FareApplied            string // e.g. "Off-peak"
+	Fare, Discount, Amount int    // in cents
 }
 
 func (t *Transaction) String() string { return fmt.Sprintf("%+v", *t) }
