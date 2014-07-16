@@ -1,3 +1,6 @@
+/*
+Package opal provides programmatic access to Opal card information.
+*/
 package opal
 
 import (
@@ -13,66 +16,50 @@ import (
 	"strings"
 )
 
-var configFile = filepath.Join(os.Getenv("HOME"), ".opal")
+// Client is an interface to the online Opal system.
+type Client struct {
+	hc *http.Client
+
+	as AuthStore
+	a  *Auth
+}
+
+// Auth holds the authentication information for accessing Opal.
+type Auth struct {
+	Username, Password string
+	Cookies            []*http.Cookie
+}
 
 var cookieBaseURL = &url.URL{
 	Scheme: "https",
 	Host:   "www.opal.com.au",
 }
 
-type Client struct {
-	hc *http.Client
-
-	cfg *config
-}
-
-type config struct {
-	Username, Password string
-	Cookies            []*http.Cookie
-}
-
-func NewClient() (*Client, error) {
-	// Security check.
-	fi, err := os.Stat(configFile)
+func NewClient(as AuthStore) (*Client, error) {
+	a, err := as.Load()
 	if err != nil {
 		return nil, err
 	}
-	if fi.Mode()&0077 != 0 {
-		return nil, fmt.Errorf("security check failed on %s: mode is %04o; it should not be accessible by group/other", configFile, fi.Mode())
-	}
-
-	raw, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		return nil, err
-	}
-	cfg := new(config)
-	if err := json.Unmarshal(raw, cfg); err != nil {
-		return nil, fmt.Errorf("bad config file %s: %v", configFile, err)
-	}
-
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, err
 	}
-	jar.SetCookies(cookieBaseURL, cfg.Cookies)
+	jar.SetCookies(cookieBaseURL, a.Cookies)
 
 	c := &Client{
 		hc: &http.Client{
 			Jar: jar,
 		},
-		cfg: cfg,
+		as: as,
+		a:  a,
 	}
 	c.hc.CheckRedirect = c.checkRedirect
 	return c, nil
 }
 
 func (c *Client) WriteConfig() error {
-	c.cfg.Cookies = c.hc.Jar.Cookies(cookieBaseURL)
-	raw, err := json.Marshal(c.cfg)
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(configFile, raw, 0600)
+	c.a.Cookies = c.hc.Jar.Cookies(cookieBaseURL)
+	return c.as.Save(c.a)
 }
 
 func (c *Client) Overview() (*Overview, error) {
@@ -138,8 +125,8 @@ func (c *Client) login() error {
 		return err
 	}
 	form := url.Values{
-		"h_username": []string{c.cfg.Username},
-		"h_password": []string{c.cfg.Password},
+		"h_username": []string{c.a.Username},
+		"h_password": []string{c.a.Password},
 		"CSRFToken":  []string{token},
 	}
 	resp, err := c.hc.PostForm("https://www.opal.com.au/login/registeredUserUsernameAndPasswordLogin", form)
@@ -156,4 +143,48 @@ func (c *Client) login() error {
 		return fmt.Errorf("login form response was %s", resp.Status)
 	}
 	return nil
+}
+
+type AuthStore interface {
+	Load() (*Auth, error)
+	Save(*Auth) error
+}
+
+var DefaultAuthFile = filepath.Join(os.Getenv("HOME"), ".opal")
+
+func FileAuthStore(filename string) AuthStore {
+	return fileAuthStore{filename}
+}
+
+type fileAuthStore struct {
+	filename string
+}
+
+func (f fileAuthStore) Load() (*Auth, error) {
+	// Security check.
+	fi, err := os.Stat(f.filename)
+	if err != nil {
+		return nil, err
+	}
+	if fi.Mode()&0077 != 0 {
+		return nil, fmt.Errorf("security check failed on %s: mode is %04o; it should not be accessible by group/other", f.filename, fi.Mode())
+	}
+
+	raw, err := ioutil.ReadFile(f.filename)
+	if err != nil {
+		return nil, err
+	}
+	a := new(Auth)
+	if err := json.Unmarshal(raw, a); err != nil {
+		return nil, fmt.Errorf("bad auth file %s: %v", f.filename, err)
+	}
+	return a, nil
+}
+
+func (f fileAuthStore) Save(a *Auth) error {
+	raw, err := json.Marshal(a)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(f.filename, raw, 0600)
 }

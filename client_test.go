@@ -9,7 +9,7 @@ func TestEverything(t *testing.T) {
 		t.Skip("-v not passed; not running TestEverything")
 	}
 
-	c, err := NewClient()
+	c, err := NewClient(FileAuthStore(DefaultAuthFile))
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
