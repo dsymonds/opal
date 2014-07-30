@@ -3,7 +3,15 @@ This is a Go package for accessing data about an [Opal](http://opal.com.au) card
 It is not anything particularly useful for users (yet);
 it is currently intended for programmers to use as a building block.
 
-To get it,
+To get it, you need download and install GO programming lanaguage first
+
+http://golang.org/dl/
+
+mkdir $HOME/go
+export GOPATH=$HOME/go
+
+?? exec: "hg": executable file not found in $PATH
+
 
 	go get github.com/dsymonds/opal
 
