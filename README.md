@@ -13,7 +13,7 @@ export GOPATH=$HOME/go
 ?? exec: "hg": executable file not found in $PATH
 
 
-	go get github.com/dsymonds/opal
+	go get github.com/bw57899/opal
 
 You will need to put auth information in $HOME/.opal that looks like
 
