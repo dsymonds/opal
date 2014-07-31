@@ -50,4 +50,4 @@ I plan to make it easier to pass to this package programmatically.
 To do a quick test that will access your card information
 and print out its balance and recent transactions,
 
-	go test -v github.com/dsymonds/opal
+	go test -v github.com/bw57899/opal
