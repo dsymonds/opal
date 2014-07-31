@@ -38,6 +38,6 @@ func TestEverything(t *testing.T) {
 		t.Errorf("Card name from c.Activity = %q, different from c.Overview = %q", n1, n2)
 	}
 	for _, tr := range a.Transactions {
-		t.Logf("%v\t(%5s) %s [$%.2f] [$%.2f] [$%.2f]", tr.When, tr.Mode, tr.Details, float64(tr.Fare)/100, float64(tr.Discount)/100, float64(-tr.Amount)/100)
+		t.Logf("%d %v\t(%5s) %s [$%.2f] [$%.2f] [$%.2f]", tr.Number, tr.When, tr.Mode, tr.Details, float64(tr.Fare)/100, float64(tr.Discount)/100, float64(-tr.Amount)/100)
 	}
 }
