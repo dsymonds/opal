@@ -24,7 +24,7 @@ func TestEverything(t *testing.T) {
 		t.Fatalf("c.Overview: %v", err)
 	}
 	for _, card := range o.Cards {
-		t.Logf("Card \"%s\": $%.2f", card.Name, float64(card.Balance)/100)
+		t.Logf("Card \"%s\" balance: $%.2f", card.Name, float64(card.Balance)/100)
 	}
 	if len(o.Cards) == 0 {
 		return
