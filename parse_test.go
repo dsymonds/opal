@@ -50,7 +50,7 @@ func TestParseOverview(t *testing.T) {
 	}
 	want := &Overview{
 		Cards: []Card{{
-			Number:  "31415926535",
+			Name:    "My 31415926535 card",
 			Balance: 7743,
 		}},
 	}
@@ -60,7 +60,7 @@ func TestParseOverview(t *testing.T) {
 }
 
 const overviewPage = `<html>
-<table id="dashboard-active-cards"><caption><span>My Opal cards</span></caption><thead><tr><th>Opal Card</th><th>Balance</th><th>Status</th><th></th></tr></thead><tbody><tr><td id="nameCol0">31415926535</td><td>$77.43</td><td id="activateCol0"><a title="Activate Opal card" href="0" class="markActivation">Activate Opal card</a></td><td><a title="View" class="dashboard-card-view" href="index?cardIndex=0">View</a></td></tr></tbody></table>
+<table id="dashboard-active-cards"><caption><span>My Opal cards</span></caption><thead><tr><th>Opal Card</th><th>Balance</th><th>Status</th><th></th></tr></thead><tbody><tr><td id="nameCol0">My 31415926535 card</td><td>$77.43</td><td id="activateCol0"><a title="Activate Opal card" href="0" class="markActivation">Activate Opal card</a></td><td><a title="View" class="dashboard-card-view" href="index?cardIndex=0">View</a></td></tr></tbody></table>
 `
 
 func TestParseActivity(t *testing.T) {
@@ -69,7 +69,7 @@ func TestParseActivity(t *testing.T) {
 		t.Fatalf("parseActivity: %v", err)
 	}
 	want := &Activity{
-		CardNumber: "31415926535",
+		CardName: "31415926535 is pi",
 		Transactions: []*Transaction{
 			{
 				Number:      5,
@@ -103,7 +103,7 @@ func TestParseActivity(t *testing.T) {
 }
 
 const activityPage = `<html>
-<table id="transaction-data"><caption><span>My Opal activity: 31415926535</span></caption>
+<table id="transaction-data"><caption><span>My Opal activity: 31415926535 is pi</span></caption>
 <thead><tr><th>Transaction<br/>number</th><th>Date/time</th><th class="narrow center">Mode</th><th>Details</th><th class="narrow center">Journey<br/>number</th><th class="right">Fare Applied</th><th class="right">Fare</th><th class="right amount">Discount</th><th class="right amount">Amount</th></tr></thead>
 <tbody style="opacity: 1;">
 <tr><td>5</td><td class="date-time">Wed<br/>09/07/2014<br/>17:01</td><td class="center"><img height="32" width="32" alt="train" src="/images/icons/mode-train.png"/></td><td class="transaction-summary">Town Hall to No tap off </td><td></td><td class="right">Default fare</td><td class="right nowrap">$8.10</td><td class="right nowrap">$0.00</td><td class="right nowrap">-$8.10</td></tr>
