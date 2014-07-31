@@ -18,13 +18,12 @@ type Overview struct {
 }
 
 type Card struct {
-	Number  string
-	Balance int // in cents
+	Name    string // either a name or number
+	Balance int    // in cents
 }
 
 var (
-	cardNumberRE = regexp.MustCompile(`^\d+$`)
-	amountRE     = regexp.MustCompile(`^(-?)\$(\d+)\.(\d\d)$`)
+	amountRE = regexp.MustCompile(`^(-?)\$(\d+)\.(\d\d)$`)
 )
 
 // parseAmount parses something matching amountRE and returns the number of cents.
@@ -45,17 +44,15 @@ func parseAmount(amt string) (int, error) {
 	return x, nil
 }
 
-// parseCard parses card info from the num and bal TDs.
-func parseCard(num, bal string) (Card, error) {
-	if !cardNumberRE.MatchString(num) {
-		return Card{}, fmt.Errorf("card number %q does not match /%v/", num, cardNumberRE)
-	}
+// parseCard parses card info from the name and bal TDs.
+func parseCard(name, bal string) (Card, error) {
+	// Cards can be renamed to almost anything.
 	balance, err := parseAmount(bal)
 	if err != nil {
 		return Card{}, fmt.Errorf("bad balance %q: %v", bal, err)
 	}
 	return Card{
-		Number:  num,
+		Name:    name,
 		Balance: balance,
 	}, nil
 }
@@ -105,7 +102,7 @@ func parseOverview(input []byte) (*Overview, error) {
 }
 
 type Activity struct {
-	CardNumber   string
+	CardName     string
 	Transactions []*Transaction
 }
 
@@ -142,9 +139,9 @@ func parseActivity(input []byte) (*Activity, error) {
 	if caption == nil || caption.FirstChild == nil {
 		return nil, errors.New("did not find caption")
 	}
-	a.CardNumber = text(caption.FirstChild)
-	if i := strings.LastIndex(a.CardNumber, " "); i >= 0 {
-		a.CardNumber = a.CardNumber[i+1:]
+	a.CardName = text(caption.FirstChild)
+	if i := strings.Index(a.CardName, ":"); i >= 0 {
+		a.CardName = strings.TrimSpace(a.CardName[i+1:])
 	}
 
 	tbody := findByDataAtom(table, atom.Tbody)
