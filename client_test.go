@@ -24,7 +24,7 @@ func TestEverything(t *testing.T) {
 		t.Fatalf("c.Overview: %v", err)
 	}
 	for _, card := range o.Cards {
-		t.Logf("Card %s: $%.2f", card.Name, float64(card.Balance)/100)
+		t.Logf("Card \"%s\" balance: $%.2f", card.Name, float64(card.Balance)/100)
 	}
 	if len(o.Cards) == 0 {
 		return
@@ -38,6 +38,6 @@ func TestEverything(t *testing.T) {
 		t.Errorf("Card name from c.Activity = %q, different from c.Overview = %q", n1, n2)
 	}
 	for _, tr := range a.Transactions {
-		t.Logf("%v\t(%5s) %s [$%.2f]", tr.When, tr.Mode, tr.Details, float64(-tr.Amount)/100)
+		t.Logf("%d %v\t(%5s) %s [$%.2f] [$%.2f] [$%.2f]", tr.JourneyNumber, tr.When, tr.Mode, tr.Details, float64(tr.Fare)/100, float64(tr.Discount)/100, float64(-tr.Amount)/100)
 	}
 }
