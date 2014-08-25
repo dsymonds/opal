@@ -30,14 +30,17 @@ func TestEverything(t *testing.T) {
 		return
 	}
 
-	a, err := c.Activity(0)
-	if err != nil {
-		t.Fatalf("c.Activity(0): %v", err)
-	}
-	if n1, n2 := a.CardName, o.Cards[0].Name; n1 != n2 {
-		t.Errorf("Card name from c.Activity = %q, different from c.Overview = %q", n1, n2)
-	}
-	for _, tr := range a.Transactions {
-		t.Logf("%v\t(%5s) %s [$%.2f]", tr.When, tr.Mode, tr.Details, float64(-tr.Amount)/100)
+	for page := 0; page <= 1; page++ {
+		req := ActivityRequest{CardIndex: 0, Offset: page}
+		a, err := c.Activity(req)
+		if err != nil {
+			t.Fatalf("c.Activity(%+v): %v", req, err)
+		}
+		if n1, n2 := a.CardName, o.Cards[0].Name; n1 != n2 {
+			t.Errorf("Card name from c.Activity = %q, different from c.Overview = %q", n1, n2)
+		}
+		for _, tr := range a.Transactions {
+			t.Logf("%v\t(%5s) %s [$%.2f]", tr.When, tr.Mode, tr.Details, float64(-tr.Amount)/100)
+		}
 	}
 }

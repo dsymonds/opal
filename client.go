@@ -70,8 +70,18 @@ func (c *Client) Overview() (*Overview, error) {
 	return parseOverview(body)
 }
 
-func (c *Client) Activity(cardIndex int) (*Activity, error) {
-	u := fmt.Sprintf("https://www.opal.com.au/registered/opal-card-transactions/?cardIndex=%d", cardIndex)
+type ActivityRequest struct {
+	CardIndex int
+	// Offset is how many pages into the past to fetch.
+	// Zero is the most recent activity.
+	Offset int
+}
+
+func (c *Client) Activity(req ActivityRequest) (*Activity, error) {
+	u := fmt.Sprintf("https://www.opal.com.au/registered/opal-card-transactions/?cardIndex=%d", req.CardIndex)
+	if req.Offset > 0 {
+		u += fmt.Sprintf("&pageIndex=%d", req.Offset)
+	}
 	body, err := c.get(u)
 	if err != nil {
 		return nil, err
