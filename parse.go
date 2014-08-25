@@ -13,10 +13,12 @@ import (
 	"code.google.com/p/go.net/html/atom"
 )
 
+// Overview represents an overview of an Opal account.
 type Overview struct {
 	Cards []Card
 }
 
+// Card represents a single Opal card.
 type Card struct {
 	Name    string // either a name or number
 	Balance int    // in cents
@@ -101,11 +103,15 @@ func parseOverview(input []byte) (*Overview, error) {
 	return o, nil
 }
 
+// Activity represents a subset of activity for a single card.
 type Activity struct {
 	CardName     string
 	Transactions []*Transaction
 }
 
+// Transaction represents a single transaction on a card.
+// This may be a single journey, or a top-up.
+// Not all fields may be set.
 type Transaction struct {
 	Number        int
 	When          time.Time

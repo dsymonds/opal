@@ -35,6 +35,7 @@ var cookieBaseURL = &url.URL{
 	Host:   "www.opal.com.au",
 }
 
+// NewClient constructs a new Client.
 func NewClient(as AuthStore) (*Client, error) {
 	a, err := as.Load()
 	if err != nil {
@@ -57,11 +58,13 @@ func NewClient(as AuthStore) (*Client, error) {
 	return c, nil
 }
 
+// WriteConfig writes the configuration to the client's AuthStore.
 func (c *Client) WriteConfig() error {
 	c.a.Cookies = c.hc.Jar.Cookies(cookieBaseURL)
 	return c.as.Save(c.a)
 }
 
+// Overview fetches the account overview.
 func (c *Client) Overview() (*Overview, error) {
 	body, err := c.get("https://www.opal.com.au/registered/index")
 	if err != nil {
@@ -70,6 +73,7 @@ func (c *Client) Overview() (*Overview, error) {
 	return parseOverview(body)
 }
 
+// An ActivityRequest configures the operation of Activity.
 type ActivityRequest struct {
 	CardIndex int
 	// Offset is how many pages into the past to fetch.
@@ -77,6 +81,7 @@ type ActivityRequest struct {
 	Offset int
 }
 
+// Activity fetches a subset of the activity data for a card.
 func (c *Client) Activity(req ActivityRequest) (*Activity, error) {
 	u := fmt.Sprintf("https://www.opal.com.au/registered/opal-card-transactions/?cardIndex=%d", req.CardIndex)
 	if req.Offset > 0 {
@@ -155,13 +160,18 @@ func (c *Client) login() error {
 	return nil
 }
 
+// An AuthStore is an interface for loading and saving authentication information.
+// See FileAuthStore for a file-based implementation.
 type AuthStore interface {
 	Load() (*Auth, error)
 	Save(*Auth) error
 }
 
+// DefaultAuthFile is a default place to store authentication information.
+// Pass this to FileAuthStore if an alternate path isn't required.
 var DefaultAuthFile = filepath.Join(os.Getenv("HOME"), ".opal")
 
+// FileAuthStore returns an AuthStore that stores authentication information in a named file.
 func FileAuthStore(filename string) AuthStore {
 	return fileAuthStore{filename}
 }
