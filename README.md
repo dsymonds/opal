@@ -1,5 +1,7 @@
 This is a Go package for accessing data about an [Opal](http://opal.com.au) card.
 
+[![GoDoc](https://godoc.org/github.com/dsymonds/opal?status.svg)](https://godoc.org/github.com/dsymonds/opal)
+
 It is not anything particularly useful for users (yet);
 it is currently intended for programmers to use as a building block.
 
