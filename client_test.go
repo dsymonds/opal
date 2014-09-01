@@ -1,6 +1,7 @@
 package opal
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -30,7 +31,8 @@ func TestEverything(t *testing.T) {
 		return
 	}
 
-	for page := 0; page <= 1; page++ {
+	const lastPage = 0 // switch to 1 to see more data
+	for page := 0; page <= lastPage; page++ {
 		req := ActivityRequest{CardIndex: 0, Offset: page}
 		a, err := c.Activity(req)
 		if err != nil {
@@ -39,7 +41,13 @@ func TestEverything(t *testing.T) {
 		if n1, n2 := a.CardName, o.Cards[0].Name; n1 != n2 {
 			t.Errorf("Card name from c.Activity = %q, different from c.Overview = %q", n1, n2)
 		}
-		for _, tr := range a.Transactions {
+		var prevWeek int
+		for i, tr := range a.Transactions {
+			_, week := tr.When.ISOWeek()
+			if i > 0 && week != prevWeek {
+				t.Logf(strings.Repeat("-", 50))
+			}
+			prevWeek = week
 			t.Logf("%v\t(%5s) %s [$%.2f]", tr.When, tr.Mode, tr.Details, float64(-tr.Amount)/100)
 		}
 	}
