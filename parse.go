@@ -79,8 +79,19 @@ func parseOverview(input []byte) (*Overview, error) {
 	var cardRows [][]string // one per row, each row having two elements (number and balance)
 	eachByAtom(tbody, atom.Tr, func(n *html.Node) bool {
 		var tds []string
+		// The card name is the first TD with a <label> inside it.
 		eachByAtom(n, atom.Td, func(n *html.Node) bool {
-			if len(tds) < 2 {
+			eachByAtom(n, atom.Label, func(n *html.Node) bool {
+				if len(tds) == 0 {
+					tds = append(tds, text(n))
+				}
+				return false
+			})
+			return false
+		})
+		// The balance is the first TD whose contents start with a dollar sign.
+		eachByAtom(n, atom.Td, func(n *html.Node) bool {
+			if t := text(n); strings.HasPrefix(t, "$") {
 				tds = append(tds, text(n))
 			}
 			return false

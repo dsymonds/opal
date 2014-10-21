@@ -60,7 +60,7 @@ func TestParseOverview(t *testing.T) {
 }
 
 const overviewPage = `<html>
-<table id="dashboard-active-cards"><caption><span>My Opal cards</span></caption><thead><tr><th>Opal Card</th><th>Balance</th><th>Status</th><th></th></tr></thead><tbody><tr><td id="nameCol0">My 31415926535 card</td><td>$77.43</td><td id="activateCol0"><a title="Activate Opal card" href="0" class="markActivation">Activate Opal card</a></td><td><a title="View" class="dashboard-card-view" href="index?cardIndex=0">View</a></td></tr></tbody></table>
+<table class="dashboard-cards" id="dashboard-active-cards"><caption><span>My Opal cards</span></caption><thead><tr><th>View</th><th>Opal Card</th><th>Type</th><th>Balance</th><th>Status</th></tr></thead><tbody><tr class="alt last"><td class="bl"><input value="0" checked="checked" name="registered_card" class="card-radio-selection" id="card_0" type="radio" tabindex="43"></td><td id="nameCol0"><label for="card_0">My 31415926535 card</label></td><td>Adult</td><td>$77.43</td><td class="br">Active</td></tr></tbody></table>
 `
 
 func TestParseActivity(t *testing.T) {
