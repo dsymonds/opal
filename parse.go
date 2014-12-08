@@ -130,7 +130,7 @@ type Transaction struct {
 	Details       string
 	JourneyNumber int // if known; numbered within the week
 
-	FareApplied            string // e.g. "Off-peak"
+	FareApplied            string // e.g. "Off-peak", "Travel Reward"
 	Fare, Discount, Amount int    // in cents
 }
 
