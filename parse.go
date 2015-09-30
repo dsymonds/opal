@@ -137,6 +137,9 @@ type Transaction struct {
 func (t *Transaction) String() string { return fmt.Sprintf("%+v", *t) }
 
 func parseActivity(input []byte) (*Activity, error) {
+	// Collapse hyphenation before parsing the HTML.
+	input = bytes.Replace(input, []byte("&shy;"), nil, -1)
+
 	// TODO: check input is UTF-8
 	doc, err := html.Parse(bytes.NewReader(input))
 	if err != nil {
@@ -247,6 +250,7 @@ func init() {
 }
 
 func parseDecimal(s string) (int, error) {
+	s = strings.TrimSpace(s)
 	x, err := strconv.ParseInt(s, 10, 0)
 	return int(x), err
 }
