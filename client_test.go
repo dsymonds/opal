@@ -48,7 +48,8 @@ func TestEverything(t *testing.T) {
 				t.Logf(strings.Repeat("-", 50))
 			}
 			prevWeek = week
-			t.Logf("%v\tJ%02d (%5s) %s [$%.2f]", tr.When, tr.JourneyNumber, tr.Mode, tr.Details, float64(-tr.Amount)/100)
+			ts := tr.When.Format("2006-01-02 15:04")
+			t.Logf("%v\tJ%02d (%5s) %s [$%.2f]", ts, tr.JourneyNumber, tr.Mode, tr.Details, float64(-tr.Amount)/100)
 		}
 	}
 }
